@@ -1,0 +1,83 @@
+package com.repartorouter.reparto_router_web.model;
+
+import jakarta.persistence.*;
+import java.time.Duration;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "rutas")
+public class Ruta {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToMany(mappedBy = "ruta", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("numero ASC")
+    private List<Parada> paradasOrdenadas = new ArrayList<>();
+
+    private double distanciaTotalKm;
+
+    private Duration tiempoTotalEstimado;
+
+    private LocalTime horaInicio;
+
+    private LocalTime horaFinEstimada;
+
+    /**
+     * Constructor vacío requerido por JPA/Hibernate.
+     */
+    protected Ruta() {
+    }
+
+    public Ruta(LocalTime horaInicio) {
+        this.horaInicio = horaInicio;
+        this.paradasOrdenadas = new ArrayList<>();
+        this.distanciaTotalKm = 0.0;
+        this.tiempoTotalEstimado = Duration.ZERO;
+        this.horaFinEstimada = null;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public double getDistanciaTotalKm() {
+        return distanciaTotalKm;
+    }
+
+    public void setDistanciaTotalKm(double distanciaTotalKm) {
+        this.distanciaTotalKm = distanciaTotalKm;
+    }
+
+    public LocalTime getHoraFinEstimada() {
+        return horaFinEstimada;
+    }
+
+    public void setHoraFinEstimada(LocalTime horaFinEstimada) {
+        this.horaFinEstimada = horaFinEstimada;
+    }
+
+    public LocalTime getHoraInicio() {
+        return horaInicio;
+    }
+
+    public List<Parada> getParadasOrdenadas() {
+        return paradasOrdenadas;
+    }
+
+    public void agregarParada(Parada parada) {
+        parada.setRuta(this);
+        this.paradasOrdenadas.add(parada);
+    }
+
+    public Duration getTiempoTotalEstimado() {
+        return tiempoTotalEstimado;
+    }
+
+    public void setTiempoTotalEstimado(Duration tiempoTotalEstimado) {
+        this.tiempoTotalEstimado = tiempoTotalEstimado;
+    }
+}

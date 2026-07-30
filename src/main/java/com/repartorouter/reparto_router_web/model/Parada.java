@@ -5,6 +5,7 @@ import java.time.LocalTime;
 
 @Entity
 @Table(name = "paradas")
+
 public class Parada {
 
     @Id
@@ -23,6 +24,10 @@ public class Parada {
     private int tiempoDescargaMin;
     private boolean esAlmacen;
     private LocalTime horaLlegadaEstimada;
+
+    @ManyToOne
+    @JoinColumn(name = "ruta_id")
+    private Ruta ruta;
 
     /**
      * Constructor vacío requerido por JPA/Hibernate.
@@ -109,6 +114,9 @@ public class Parada {
 
     public int getTiempoDescargaMin() { return tiempoDescargaMin; }
     public void setTiempoDescargaMin(int tiempoDescargaMin) { this.tiempoDescargaMin = tiempoDescargaMin; }
+
+    public Ruta getRuta() { return ruta; }
+    public void setRuta(Ruta ruta) { this.ruta = ruta; }
 
     public boolean isEsAlmacen() { return esAlmacen; }
     public void setEsAlmacen(boolean esAlmacen) { this.esAlmacen = esAlmacen; }
