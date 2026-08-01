@@ -115,6 +115,63 @@
             background: #fdecea;
         }
 
+        #paradas-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .parada-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 0.85rem;
+        }
+
+        .parada-numero {
+            display: inline-block;
+            background: #1e3a5f;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            width: 18px;
+            height: 18px;
+            line-height: 18px;
+            text-align: center;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .sin-geocodificar {
+            margin-left: 6px;
+            color: #e67e22;
+        }
+
+        .btn-eliminar-parada {
+            background: none;
+            border: none;
+            font-size: 0.9rem;
+            cursor: pointer;
+            opacity: 0.4;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: opacity 0.15s ease, background 0.15s ease;
+        }
+
+        .btn-eliminar-parada:hover {
+            opacity: 1;
+            background: #fdecea;
+        }
+
+        .sin-paradas {
+            font-size: 0.85rem;
+            color: #999;
+            font-style: italic;
+        }
+
         #estado {
             font-size: 0.85rem;
             color: #999;
@@ -223,6 +280,9 @@
         <div id="rutas-lista"></div>
 
         <div id="panel-parada" style="display:none;">
+            <h2 style="margin-top:20px;">Paradas de esta ruta</h2>
+            <div id="paradas-lista"></div>
+
             <h2 style="margin-top:20px;">Añadir parada</h2>
             <form id="form-parada">
                 <label>Nombre</label>
@@ -274,6 +334,51 @@
         marcadoresActuales = [];
     }
 
+    function renderizarListaParadas(paradas) {
+        const contenedor = document.getElementById('paradas-lista');
+
+        if (paradas.length === 0) {
+            contenedor.innerHTML = '<p class="sin-paradas">Todavía no hay paradas.</p>';
+            return;
+        }
+
+        contenedor.innerHTML = '';
+
+        paradas.forEach(parada => {
+            const item = document.createElement('div');
+            item.className = 'parada-item';
+            item.innerHTML = `
+                <div>
+                    <span class="parada-numero">#${parada.numero}</span>
+                    <span class="parada-nombre">${parada.nombre}</span>
+                    ${(parada.latitud === 0 && parada.longitud === 0) ? '<span class="sin-geocodificar" title="Sin coordenadas">⚠</span>' : ''}
+                </div>
+                <button class="btn-eliminar-parada" title="Eliminar parada" data-id="${parada.id}">🗑</button>
+            `;
+            item.querySelector('.btn-eliminar-parada').addEventListener('click', () => {
+                eliminarParada(parada.id, parada.nombre);
+            });
+            contenedor.appendChild(item);
+        });
+    }
+
+    async function eliminarParada(paradaId, nombreParada) {
+        const confirmado = confirm(`¿Eliminar la parada "${nombreParada}"?`);
+        if (!confirmado) return;
+
+        try {
+            const resp = await fetch(`${API_BASE}/rutas/${rutaActivaId}/paradas/${paradaId}`, {
+                method: 'DELETE'
+            });
+            if (!resp.ok) throw new Error('No se pudo eliminar la parada');
+
+            await cargarParadasDeRuta(rutaActivaId);
+            await cargarRutas();
+        } catch (err) {
+            alert('Error al eliminar la parada: ' + err.message);
+        }
+    }
+
     function pintarParadas(paradas) {
         limpiarMarcadores();
 
@@ -308,6 +413,7 @@
             if (!resp.ok) throw new Error('Error al obtener paradas');
             const paradas = await resp.json();
             const resultado = pintarParadas(paradas);
+            renderizarListaParadas(paradas);
 
             if (resultado.total === 0) {
                 document.getElementById('estado').textContent = 'Esta ruta no tiene paradas todavía.';

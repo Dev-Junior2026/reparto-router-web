@@ -84,6 +84,26 @@ public class RutaController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // DELETE /api/rutas/{rutaId}/paradas/{paradaId}
+    @DeleteMapping("/{rutaId}/paradas/{paradaId}")
+    public ResponseEntity<?> eliminarParada(@PathVariable Long rutaId, @PathVariable Long paradaId) {
+        return rutaRepository.findById(rutaId)
+                .map(ruta -> {
+                    Parada parada = paradaRepository.findById(paradaId).orElse(null);
+
+                    if (parada == null || !parada.getRuta().getId().equals(rutaId)) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                                .body("La parada no existe o no pertenece a esta ruta");
+                    }
+
+                    ruta.getParadasOrdenadas().remove(parada);
+                    paradaRepository.delete(parada);
+
+                    return ResponseEntity.noContent().build();
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     // PUT /api/rutas/{id}  (editar horaInicio, horaFinEstimada, etc.)
     @PutMapping("/{id}")
     public ResponseEntity<Ruta> actualizarRuta(@PathVariable Long id, @RequestBody Ruta datosRuta) {
