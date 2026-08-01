@@ -172,6 +172,48 @@
             font-style: italic;
         }
 
+        .btn-optimizar {
+            width: 100%;
+            background: #8e44ad;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-optimizar:hover {
+            background: #732d91;
+        }
+
+        .btn-optimizar:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        #resumen-optimizacion {
+            font-size: 0.82rem;
+            margin-top: 10px;
+        }
+
+        .resumen-box {
+            background: #f3e9f7;
+            border: 1px solid #d9bce6;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-top: 8px;
+        }
+
+        .resumen-box div {
+            margin-bottom: 4px;
+        }
+
+        .resumen-box strong {
+            color: #6c2b85;
+        }
+
         #estado {
             font-size: 0.85rem;
             color: #999;
@@ -280,6 +322,9 @@
         <div id="rutas-lista"></div>
 
         <div id="panel-parada" style="display:none;">
+            <button id="btn-optimizar" class="btn-optimizar">🧭 Optimizar ruta</button>
+            <div id="resumen-optimizacion"></div>
+
             <h2 style="margin-top:20px;">Paradas de esta ruta</h2>
             <div id="paradas-lista"></div>
 
@@ -327,11 +372,17 @@
     }).addTo(mapa);
 
     let marcadoresActuales = [];
+    let polilineaActual = null;
     let rutaActivaId = null;
 
     function limpiarMarcadores() {
         marcadoresActuales.forEach(m => mapa.removeLayer(m));
         marcadoresActuales = [];
+
+        if (polilineaActual) {
+            mapa.removeLayer(polilineaActual);
+            polilineaActual = null;
+        }
     }
 
     function renderizarListaParadas(paradas) {
@@ -390,6 +441,7 @@
 
         const bounds = [];
 
+        // Las paradas ya vienen ordenadas por 'numero' desde el backend (@OrderBy)
         paradasConCoordenadas.forEach(parada => {
             const marker = L.marker([parada.latitud, parada.longitud])
                 .addTo(mapa)
@@ -397,10 +449,21 @@
                     <strong>#${parada.numero} - ${parada.nombre}</strong><br>
                     ${parada.direccion || parada.calle}<br>
                     ${parada.horaApertura || ''} - ${parada.horaCierre || ''}
+                    ${parada.horaLlegadaEstimada ? '<br>Llegada estimada: ' + parada.horaLlegadaEstimada : ''}
                 `);
             marcadoresActuales.push(marker);
             bounds.push([parada.latitud, parada.longitud]);
         });
+
+        // Dibuja la línea de recorrido si hay 2 o más paradas
+        if (bounds.length >= 2) {
+            polilineaActual = L.polyline(bounds, {
+                color: '#8e44ad',
+                weight: 3,
+                dashArray: '8,6',
+                opacity: 0.8
+            }).addTo(mapa);
+        }
 
         mapa.fitBounds(bounds, { padding: [40, 40] });
 
@@ -439,6 +502,7 @@
         rutaActivaId = rutaId;
         document.getElementById('panel-parada').style.display = 'block';
         document.getElementById('parada-mensaje').innerHTML = '';
+        document.getElementById('resumen-optimizacion').innerHTML = '';
     }
 
     async function eliminarRuta(rutaId, nombreRuta) {
@@ -592,6 +656,52 @@
         } finally {
             boton.disabled = false;
             boton.textContent = 'Añadir parada';
+        }
+    });
+
+    // ─── Optimizar ruta activa ───────────────────────────────────────
+    document.getElementById('btn-optimizar').addEventListener('click', async () => {
+        if (!rutaActivaId) return;
+
+        const boton = document.getElementById('btn-optimizar');
+        const resumen = document.getElementById('resumen-optimizacion');
+
+        boton.disabled = true;
+        boton.textContent = 'Optimizando...';
+        resumen.innerHTML = '';
+
+        try {
+            const resp = await fetch(`${API_BASE}/rutas/${rutaActivaId}/optimizar`, {
+                method: 'POST'
+            });
+
+            if (!resp.ok) {
+                const texto = await resp.text();
+                throw new Error(texto || 'No se pudo optimizar la ruta');
+            }
+
+            const rutaOptimizada = await resp.json();
+
+            const horas = rutaOptimizada.tiempoTotalEstimado
+                .replace('PT', '').replace('H', ' h ').replace('M', ' min').replace('S', ' s');
+
+            resumen.innerHTML = `
+                <div class="resumen-box">
+                    <div>✓ Ruta optimizada</div>
+                    <div><strong>Distancia total:</strong> ${rutaOptimizada.distanciaTotalKm.toFixed(2)} km</div>
+                    <div><strong>Hora fin estimada:</strong> ${rutaOptimizada.horaFinEstimada}</div>
+                    <div><strong>Tiempo total:</strong> ${horas || '0 min'}</div>
+                </div>
+            `;
+
+            await cargarParadasDeRuta(rutaActivaId);
+            await cargarRutas();
+
+        } catch (err) {
+            resumen.innerHTML = `<span class="error">${err.message}</span>`;
+        } finally {
+            boton.disabled = false;
+            boton.textContent = '🧭 Optimizar ruta';
         }
     });
 
