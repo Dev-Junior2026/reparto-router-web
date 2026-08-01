@@ -10,6 +10,8 @@ import com.repartorouter.reparto_router_web.controller.dto.ParadaRequest;
 import com.repartorouter.reparto_router_web.model.Parada;
 import com.repartorouter.reparto_router_web.repository.ParadaRepository;
 import com.repartorouter.reparto_router_web.service.GeocodificacionService;
+import com.repartorouter.reparto_router_web.algorithm.HeuristicaVecino;
+import com.repartorouter.reparto_router_web.algorithm.ResultadoOptimizacion;
 
 import java.util.List;
 
@@ -19,6 +21,9 @@ public class RutaController {
 
     @Autowired
     private RutaRepository rutaRepository;
+
+    @Autowired
+    private HeuristicaVecino heuristicaVecino;
 
     // GET /api/rutas
     @GetMapping
@@ -72,6 +77,46 @@ public class RutaController {
                     paradaRepository.save(parada);
 
                     return ResponseEntity.status(HttpStatus.CREATED).body(parada);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // POST /api/rutas/{id}/optimizar
+    @PostMapping("/{id}/optimizar")
+    public ResponseEntity<?> optimizarRuta(@PathVariable Long id) {
+        return rutaRepository.findById(id)
+                .map(ruta -> {
+                    List<Parada> paradas = ruta.getParadasOrdenadas();
+
+                    if (paradas.isEmpty()) {
+                        return ResponseEntity.badRequest().body("La ruta no tiene paradas que optimizar");
+                    }
+
+                    boolean tieneAlmacen = paradas.stream().anyMatch(Parada::isEsAlmacen);
+                    if (!tieneAlmacen) {
+                        return ResponseEntity.badRequest().body("La ruta no tiene ninguna parada marcada como almacén");
+                    }
+
+                    boolean todasGeocodificadas = paradas.stream()
+                            .allMatch(p -> p.getLatitud() != 0 || p.getLongitud() != 0);
+                    if (!todasGeocodificadas) {
+                        return ResponseEntity.badRequest().body("Hay paradas sin coordenadas; geocodifícalas antes de optimizar");
+                    }
+
+                    ResultadoOptimizacion resultado = heuristicaVecino.calcular(paradas, ruta.getHoraInicio());
+
+                    // Persistir el nuevo orden (numero) de cada parada
+                    for (Parada parada : resultado.getParadasEnOrden()) {
+                        paradaRepository.save(parada);
+                    }
+
+                    // Actualizar los totales de la ruta
+                    ruta.setDistanciaTotalKm(resultado.getDistanciaTotalKm());
+                    ruta.setHoraFinEstimada(resultado.getHoraFinEstimada());
+                    ruta.setTiempoTotalEstimado(resultado.getTiempoTotalEstimado());
+                    Ruta rutaActualizada = rutaRepository.save(ruta);
+
+                    return ResponseEntity.ok(rutaActualizada);
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
