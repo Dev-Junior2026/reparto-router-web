@@ -91,6 +91,30 @@
             margin-top: 4px;
         }
 
+        .ruta-item-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .btn-eliminar-ruta {
+            background: none;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            opacity: 0.4;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: opacity 0.15s ease, background 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-eliminar-ruta:hover {
+            opacity: 1;
+            background: #fdecea;
+        }
+
         #estado {
             font-size: 0.85rem;
             color: #999;
@@ -107,12 +131,89 @@
             font-size: 0.85rem;
             padding: 8px 0;
         }
+
+        .btn-header {
+            background: #2ecc71;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .btn-header:hover {
+            background: #27ae60;
+        }
+
+        #panel-parada {
+            border-top: 1px solid #e0e0e0;
+            padding-top: 16px;
+        }
+
+        #form-parada {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        #form-parada label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #555;
+            margin-top: 8px;
+        }
+
+        #form-parada input {
+            padding: 8px 10px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        #form-parada input:focus {
+            outline: none;
+            border-color: #1e3a5f;
+        }
+
+        .btn-primary {
+            margin-top: 14px;
+            background: #1e3a5f;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #16304d;
+        }
+
+        .btn-primary:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        #parada-mensaje {
+            font-size: 0.82rem;
+            margin-top: 10px;
+        }
+
+        .mensaje-ok {
+            color: #27ae60;
+        }
     </style>
 </head>
 <body>
 
 <header>
     <h1>🚚 Reparto Router</h1>
+    <button id="btn-nueva-ruta" class="btn-header">+ Nueva ruta</button>
 </header>
 
 <div class="layout">
@@ -120,6 +221,32 @@
         <h2>Rutas</h2>
         <div id="estado">Cargando rutas...</div>
         <div id="rutas-lista"></div>
+
+        <div id="panel-parada" style="display:none;">
+            <h2 style="margin-top:20px;">Añadir parada</h2>
+            <form id="form-parada">
+                <label>Nombre</label>
+                <input type="text" id="p-nombre" required>
+
+                <label>Calle y número</label>
+                <input type="text" id="p-calle" required>
+
+                <label>Código postal</label>
+                <input type="text" id="p-codigoPostal" required>
+
+                <label>Población</label>
+                <input type="text" id="p-poblacion" required>
+
+                <label>Hora apertura</label>
+                <input type="time" id="p-horaApertura" value="09:00">
+
+                <label>Hora cierre</label>
+                <input type="time" id="p-horaCierre" value="18:00">
+
+                <button type="submit" class="btn-primary">Añadir parada</button>
+            </form>
+            <div id="parada-mensaje"></div>
+        </div>
     </aside>
 
     <main id="mapa"></main>
@@ -140,6 +267,7 @@
     }).addTo(mapa);
 
     let marcadoresActuales = [];
+    let rutaActivaId = null;
 
     function limpiarMarcadores() {
         marcadoresActuales.forEach(m => mapa.removeLayer(m));
@@ -199,9 +327,32 @@
         }
     }
 
-    function marcarRutaActiva(elemento) {
+    function marcarRutaActiva(elemento, rutaId) {
         document.querySelectorAll('.ruta-item').forEach(el => el.classList.remove('activa'));
         elemento.classList.add('activa');
+        rutaActivaId = rutaId;
+        document.getElementById('panel-parada').style.display = 'block';
+        document.getElementById('parada-mensaje').innerHTML = '';
+    }
+
+    async function eliminarRuta(rutaId, nombreRuta) {
+        const confirmado = confirm(`¿Seguro que quieres eliminar "${nombreRuta}"? Esta acción no se puede deshacer y borrará también sus paradas.`);
+        if (!confirmado) return;
+
+        try {
+            const resp = await fetch(`${API_BASE}/rutas/${rutaId}`, { method: 'DELETE' });
+            if (!resp.ok) throw new Error('No se pudo eliminar la ruta');
+
+            if (rutaActivaId === rutaId) {
+                rutaActivaId = null;
+                document.getElementById('panel-parada').style.display = 'none';
+                limpiarMarcadores();
+            }
+
+            await cargarRutas();
+        } catch (err) {
+            alert('Error al eliminar la ruta: ' + err.message);
+        }
     }
 
     async function cargarRutas() {
@@ -225,23 +376,118 @@
                 const item = document.createElement('div');
                 item.className = 'ruta-item';
                 item.innerHTML = `
-                    <div class="ruta-hora">Ruta #${ruta.id} - ${ruta.horaInicio || 'sin hora'}</div>
-                    <div class="ruta-meta">${ruta.paradasOrdenadas ? ruta.paradasOrdenadas.length : 0} parada(s) · ${ruta.distanciaTotalKm} km</div>
+                    <div class="ruta-item-top">
+                        <div>
+                            <div class="ruta-hora">${ruta.nombre || ('Ruta #' + ruta.id)}</div>
+                            <div class="ruta-meta">${ruta.horaInicio || 'sin hora'} · ${ruta.paradasOrdenadas ? ruta.paradasOrdenadas.length : 0} parada(s) · ${ruta.distanciaTotalKm} km</div>
+                        </div>
+                        <button class="btn-eliminar-ruta" title="Eliminar ruta" data-id="${ruta.id}">🗑</button>
+                    </div>
                 `;
+
+                item.querySelector('.btn-eliminar-ruta').addEventListener('click', (e) => {
+                    e.stopPropagation(); // evita que también se seleccione la ruta al pulsar el botón
+                    eliminarRuta(ruta.id, ruta.nombre || ('Ruta #' + ruta.id));
+                });
                 item.addEventListener('click', () => {
-                    marcarRutaActiva(item);
+                    marcarRutaActiva(item, ruta.id);
                     cargarParadasDeRuta(ruta.id);
                 });
                 contenedor.appendChild(item);
+
+                if (ruta.id === rutaActivaId) {
+                    item.classList.add('activa');
+                }
             });
 
-            // Cargar automáticamente la primera ruta
-            contenedor.firstChild.click();
+            if (rutaActivaId && contenedor.querySelector('.ruta-item.activa')) {
+                // Ya hay una ruta activa preservada tras la recarga, no hace falta hacer nada más
+            } else {
+                contenedor.firstChild.click();
+            }
 
         } catch (err) {
             estado.innerHTML = `<span class="error">Error al cargar rutas: ${err.message}. ¿Está el servidor corriendo en localhost:8080?</span>`;
         }
     }
+
+    // ─── Crear nueva ruta ─────────────────────────────────────────────
+    document.getElementById('btn-nueva-ruta').addEventListener('click', async () => {
+        const nombre = prompt('Nombre de la ruta (ej: Chofer 1):');
+        if (!nombre) return;
+
+        const horaInicio = prompt('Hora de inicio de la ruta (formato HH:MM):', '08:00');
+        if (!horaInicio) return;
+
+        try {
+            const resp = await fetch(`${API_BASE}/rutas`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre: nombre, horaInicio: horaInicio + ':00' })
+            });
+            if (!resp.ok) throw new Error('No se pudo crear la ruta');
+            await cargarRutas();
+        } catch (err) {
+            alert('Error al crear la ruta: ' + err.message);
+        }
+    });
+
+    // ─── Añadir parada a la ruta activa ──────────────────────────────
+    document.getElementById('form-parada').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!rutaActivaId) {
+            alert('Selecciona una ruta primero.');
+            return;
+        }
+
+        const boton = e.target.querySelector('button[type="submit"]');
+        const mensaje = document.getElementById('parada-mensaje');
+
+        const datos = {
+            nombre: document.getElementById('p-nombre').value,
+            calle: document.getElementById('p-calle').value,
+            codigoPostal: document.getElementById('p-codigoPostal').value,
+            poblacion: document.getElementById('p-poblacion').value,
+            horaApertura: document.getElementById('p-horaApertura').value + ':00',
+            horaCierre: document.getElementById('p-horaCierre').value + ':00'
+        };
+
+        boton.disabled = true;
+        boton.textContent = 'Geocodificando dirección...';
+        mensaje.innerHTML = '';
+
+        try {
+            const resp = await fetch(`${API_BASE}/rutas/${rutaActivaId}/paradas`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+
+            if (!resp.ok) throw new Error('El servidor rechazó la petición');
+
+            const paradaCreada = await resp.json();
+
+            if (paradaCreada.latitud === 0 && paradaCreada.longitud === 0) {
+                mensaje.innerHTML = '<span class="error">Parada guardada, pero no se encontraron coordenadas para esa dirección.</span>';
+            } else {
+                mensaje.innerHTML = '<span class="mensaje-ok">✓ Parada añadida y geocodificada correctamente.</span>';
+            }
+
+            e.target.reset();
+            document.getElementById('p-horaApertura').value = '09:00';
+            document.getElementById('p-horaCierre').value = '18:00';
+
+            await cargarParadasDeRuta(rutaActivaId);
+            await cargarRutas(); // refresca el contador de paradas en el sidebar
+
+        } catch (err) {
+            mensaje.innerHTML = `<span class="error">Error: ${err.message}</span>`;
+        } finally {
+            boton.disabled = false;
+            boton.textContent = 'Añadir parada';
+        }
+    });
 
     cargarRutas();
 </script>

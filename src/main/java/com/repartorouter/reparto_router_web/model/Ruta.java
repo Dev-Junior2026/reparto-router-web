@@ -28,13 +28,16 @@ public class Ruta {
 
     private LocalTime horaFinEstimada;
 
+    private String nombre;
+
     /**
      * Constructor vacío requerido por JPA/Hibernate.
      */
     protected Ruta() {
     }
 
-    public Ruta(LocalTime horaInicio) {
+    public Ruta(String nombre, LocalTime horaInicio) {
+        this.nombre = nombre;
         this.horaInicio = horaInicio;
         this.paradasOrdenadas = new ArrayList<>();
         this.distanciaTotalKm = 0.0;
@@ -72,6 +75,14 @@ public class Ruta {
 
     public void setHoraInicio(LocalTime horaInicio) {
         this.horaInicio = horaInicio;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
     }
 
     public List<Parada> getParadasOrdenadas() {
