@@ -1,5 +1,6 @@
 package com.repartorouter.reparto_router_web.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.time.Duration;
 import java.time.LocalTime;
@@ -16,6 +17,7 @@ public class Ruta {
 
     @OneToMany(mappedBy = "ruta", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("numero ASC")
+    @JsonManagedReference
     private List<Parada> paradasOrdenadas = new ArrayList<>();
 
     private double distanciaTotalKm;

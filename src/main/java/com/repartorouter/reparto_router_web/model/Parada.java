@@ -1,5 +1,6 @@
 package com.repartorouter.reparto_router_web.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import java.time.LocalTime;
 
@@ -27,6 +28,7 @@ public class Parada {
 
     @ManyToOne
     @JoinColumn(name = "ruta_id")
+    @com.fasterxml.jackson.annotation.JsonBackReference
     private Ruta ruta;
 
     /**
