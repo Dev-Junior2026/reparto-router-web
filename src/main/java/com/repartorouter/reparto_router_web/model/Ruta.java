@@ -48,6 +48,8 @@ public class Ruta {
         return distanciaTotalKm;
     }
 
+
+
     public void setDistanciaTotalKm(double distanciaTotalKm) {
         this.distanciaTotalKm = distanciaTotalKm;
     }
@@ -60,8 +62,14 @@ public class Ruta {
         this.horaFinEstimada = horaFinEstimada;
     }
 
+
+
     public LocalTime getHoraInicio() {
         return horaInicio;
+    }
+
+    public void setHoraInicio(LocalTime horaInicio) {
+        this.horaInicio = horaInicio;
     }
 
     public List<Parada> getParadasOrdenadas() {
