@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import com.repartorouter.reparto_router_web.controller.dto.ParadaRequest;
 import com.repartorouter.reparto_router_web.model.Parada;
 import com.repartorouter.reparto_router_web.repository.ParadaRepository;
+import com.repartorouter.reparto_router_web.service.GeocodificacionService;
 
 import java.util.List;
 
@@ -58,7 +59,15 @@ public class RutaController {
                             request.getHoraApertura(),
                             request.getHoraCierre()
                     );
-
+                    // Intentar geocodificar la dirección
+                    try {
+                        double[] coords = geocodificacionService.geocodificar(parada.getDireccion());
+                        parada.setLatitud(coords[0]);
+                        parada.setLongitud(coords[1]);
+                    } catch (RuntimeException e) {
+                        // Si falla, la parada se guarda igualmente con lat/lon en 0.0
+                        // (el frontend ya sabe mostrar el aviso de "sin coordenadas")
+                    }
                     ruta.agregarParada(parada); // ya existe en tu entidad Ruta, asocia parada.setRuta(this)
                     paradaRepository.save(parada);
 
@@ -99,4 +108,7 @@ public class RutaController {
         rutaRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
+
+    @Autowired
+    private GeocodificacionService geocodificacionService;
 }
