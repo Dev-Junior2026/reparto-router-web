@@ -23,9 +23,13 @@ public class HeuristicaVecino {
     private HorarioService horarioService;
 
     /**
-     * Calcula el orden óptimo de visita de las paradas, empezando y terminando en el almacén.
-     * A diferencia del desktop, el almacén NO se duplica como Parada: su vuelta se refleja
-     * solo en distanciaTotalKm y horaFinEstimada.
+     * Calcula el orden de visita de las paradas, empezando y terminando en el almacén.
+     * Criterio de selección en cada paso: PRIORIDAD 1 = hora de apertura más temprana
+     * (para minimizar tiempos de espera del repartidor); PRIORIDAD 2 = distancia más
+     * corta, usada solo como desempate cuando dos o más candidatas abren a la misma hora.
+     *
+     * El almacén NO se duplica como Parada: su vuelta se refleja solo en
+     * distanciaTotalKm y horaFinEstimada.
      */
     public ResultadoOptimizacion calcular(List<Parada> paradas, LocalTime horaInicioJornada) {
 
@@ -59,6 +63,8 @@ public class HeuristicaVecino {
             double mejorDistancia = Double.MAX_VALUE;
             LocalTime mejorHoraLlegada = null;
 
+            // Fase 1: solo candidatas alcanzables antes de su hora de cierre.
+            // Criterio: hora de apertura más temprana; distancia como desempate.
             for (Parada candidata : pendientes) {
                 double distancia = distanciaService.calcularDistanciaKm(
                         posicionActual.getLatitud(), posicionActual.getLongitud(),
@@ -69,7 +75,12 @@ public class HeuristicaVecino {
                 LocalTime horaLlegadaCandidata = horaActual.plusMinutes((long) tiempoViajeMinutos);
 
                 if (horarioService.esAlcanzable(horaLlegadaCandidata, candidata)) {
-                    if (distancia < mejorDistancia) {
+                    boolean esMejor = mejorParada == null
+                            || candidata.getHoraApertura().isBefore(mejorParada.getHoraApertura())
+                            || (candidata.getHoraApertura().equals(mejorParada.getHoraApertura())
+                            && distancia < mejorDistancia);
+
+                    if (esMejor) {
                         mejorDistancia = distancia;
                         mejorParada = candidata;
                         mejorHoraLlegada = horaLlegadaCandidata;
@@ -77,7 +88,9 @@ public class HeuristicaVecino {
                 }
             }
 
-            // Si ninguna parada es alcanzable dentro de horario, se elige la más cercana igualmente
+            // Fase 2 (fallback): ninguna candidata es alcanzable dentro de su horario de
+            // cierre; se relaja esa restricción, pero se mantiene el mismo criterio
+            // hora de apertura > distancia.
             if (mejorParada == null) {
                 for (Parada candidata : pendientes) {
                     double distancia = distanciaService.calcularDistanciaKm(
@@ -88,7 +101,12 @@ public class HeuristicaVecino {
                     double tiempoViajeMinutos = (distancia / VELOCIDAD_MEDIA_KMH) * 60;
                     LocalTime horaLlegadaCandidata = horaActual.plusMinutes((long) tiempoViajeMinutos);
 
-                    if (distancia < mejorDistancia) {
+                    boolean esMejor = mejorParada == null
+                            || candidata.getHoraApertura().isBefore(mejorParada.getHoraApertura())
+                            || (candidata.getHoraApertura().equals(mejorParada.getHoraApertura())
+                            && distancia < mejorDistancia);
+
+                    if (esMejor) {
                         mejorDistancia = distancia;
                         mejorParada = candidata;
                         mejorHoraLlegada = horaLlegadaCandidata;
@@ -127,6 +145,8 @@ public class HeuristicaVecino {
      * Dado un orden fijo de paradas (empezando por el almacén), recalcula
      * horaLlegadaEstimada, numero, y los totales de la ruta.
      * No decide el orden — solo "simula" recorrerlo tal cual se le pasa.
+     * Se usa para renumerar/recalcular tras añadir o eliminar una parada,
+     * sin reordenar la ruta.
      */
     public ResultadoOptimizacion recalcularConOrdenFijo(List<Parada> ordenFijo, LocalTime horaInicioJornada) {
         Parada almacen = ordenFijo.get(0);
@@ -159,7 +179,6 @@ public class HeuristicaVecino {
             posicionActual = siguiente;
         }
 
-        // Vuelta al almacén
         double distanciaVuelta = distanciaService.calcularDistanciaKm(
                 posicionActual.getLatitud(), posicionActual.getLongitud(),
                 almacen.getLatitud(), almacen.getLongitud()
@@ -172,5 +191,4 @@ public class HeuristicaVecino {
 
         return new ResultadoOptimizacion(ordenFijo, distanciaTotalKm, horaActual, tiempoTotal);
     }
-
 }

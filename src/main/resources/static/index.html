@@ -161,6 +161,35 @@
             margin-left: 6px;
         }
 
+        .icono-transparente {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        .marcador-numerado {
+            width: 30px;
+            height: 30px;
+            background: #1e3a5f;
+            border: 2px solid white;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .marcador-numerado span {
+            transform: rotate(45deg);
+            color: white;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+
+        .marcador-numerado.marcador-almacen {
+            background: #e67e22;
+        }
+
         .btn-eliminar-parada {
             background: none;
             border: none;
@@ -728,6 +757,16 @@
         }
     }
 
+    function crearIconoNumerado(numero, esAlmacen) {
+        return L.divIcon({
+            className: 'icono-transparente',
+            html: `<div class="marcador-numerado ${esAlmacen ? 'marcador-almacen' : ''}"><span>${numero}</span></div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 30],
+            popupAnchor: [0, -30]
+        });
+    }
+
     function pintarParadas(paradas) {
         limpiarMarcadores();
 
@@ -741,10 +780,12 @@
 
         // Las paradas ya vienen ordenadas por 'numero' desde el backend (@OrderBy)
         paradasConCoordenadas.forEach(parada => {
-            const marker = L.marker([parada.latitud, parada.longitud])
+            const marker = L.marker([parada.latitud, parada.longitud], {
+                icon: crearIconoNumerado(parada.numero, parada.esAlmacen)
+            })
                 .addTo(mapa)
                 .bindPopup(`
-                    <strong>#${parada.numero} - ${parada.nombre}</strong><br>
+                    <strong>#${parada.numero} - ${parada.nombre}</strong>${parada.esAlmacen ? ' 🏭' : ''}<br>
                     ${parada.direccion || parada.calle}<br>
                     ${parada.horaApertura || ''} - ${parada.horaCierre || ''}
                     ${parada.horaLlegadaEstimada ? '<br>Llegada estimada: ' + parada.horaLlegadaEstimada : ''}
