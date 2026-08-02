@@ -150,6 +150,17 @@
             color: #e67e22;
         }
 
+        .badge-almacen {
+            display: inline-block;
+            background: #eaf2ff;
+            color: #1e3a5f;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+        }
+
         .btn-eliminar-parada {
             background: none;
             border: none;
@@ -212,6 +223,202 @@
 
         .resumen-box strong {
             color: #6c2b85;
+        }
+
+        .btn-importar {
+            width: 100%;
+            background: #e67e22;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .btn-importar:hover {
+            background: #d35400;
+        }
+
+        .btn-importar:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-caja {
+            background: white;
+            border-radius: 10px;
+            width: 90vw;
+            max-width: 1100px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-header h2 {
+            font-size: 1.1rem;
+        }
+
+        .btn-cerrar-modal {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .btn-cerrar-modal:hover {
+            color: #333;
+        }
+
+        .modal-info {
+            padding: 12px 20px;
+            font-size: 0.85rem;
+            color: #666;
+            background: #fff8ee;
+            border-bottom: 1px solid #eee;
+        }
+
+        #modal-tabla-contenedor {
+            overflow-y: auto;
+            flex: 1;
+            padding: 0 20px;
+        }
+
+        .tabla-import {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        .tabla-import th {
+            position: sticky;
+            top: 0;
+            background: white;
+            text-align: left;
+            padding: 8px 6px;
+            border-bottom: 2px solid #ddd;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #777;
+        }
+
+        .tabla-import td {
+            padding: 4px 6px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .tabla-import input[type="text"],
+        .tabla-import input[type="time"] {
+            width: 100%;
+            padding: 5px 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .tabla-import tr.fila-excluida input {
+            opacity: 0.4;
+            background: #f5f5f5;
+        }
+
+        .icono-alerta {
+            color: #e67e22;
+            margin-left: 4px;
+            cursor: help;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-top: 1px solid #eee;
+        }
+
+        #modal-contador {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .btn-secundario {
+            background: white;
+            color: #555;
+            border: 1px solid #ccc;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+
+        .btn-secundario:hover {
+            background: #f5f5f5;
+        }
+
+        #modal-mensaje {
+            padding: 0 20px;
+            font-size: 0.85rem;
+        }
+
+        .modal-caja-pequena {
+            max-width: 440px;
+        }
+
+        .form-modal {
+            padding: 16px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .form-modal label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #555;
+            margin-top: 10px;
+        }
+
+        .form-modal input {
+            padding: 8px 10px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .form-modal input:focus {
+            outline: none;
+            border-color: #1e3a5f;
+        }
+
+        .form-modal button[type="submit"] {
+            margin-top: 18px;
+        }
+
+        #nueva-ruta-mensaje {
+            font-size: 0.82rem;
+            margin-top: 8px;
         }
 
         #estado {
@@ -323,6 +530,8 @@
 
         <div id="panel-parada" style="display:none;">
             <button id="btn-optimizar" class="btn-optimizar">🧭 Optimizar ruta</button>
+            <button id="btn-importar-pdf" class="btn-importar">📄 Importar PDF</button>
+            <input type="file" id="input-pdf" accept="application/pdf" style="display:none;">
             <div id="resumen-optimizacion"></div>
 
             <h2 style="margin-top:20px;">Paradas de esta ruta</h2>
@@ -355,6 +564,90 @@
     </aside>
 
     <main id="mapa"></main>
+</div>
+
+<!-- Modal de nueva ruta (con almacén) -->
+<div id="modal-nueva-ruta" class="modal-overlay" style="display:none;">
+    <div class="modal-caja modal-caja-pequena">
+        <div class="modal-header">
+            <h2>Nueva ruta</h2>
+            <button id="btn-cerrar-modal-ruta" class="btn-cerrar-modal">✕</button>
+        </div>
+
+        <p class="modal-info">
+            Toda ruta necesita un punto de carga/descarga (almacén). Se geocodificará automáticamente
+            y quedará como parada #1, marcada como almacén.
+        </p>
+
+        <form id="form-nueva-ruta" class="form-modal">
+            <label>Nombre de la ruta (ej: Chofer 1)</label>
+            <input type="text" id="nr-nombre-ruta" required>
+
+            <label>Hora de inicio</label>
+            <input type="time" id="nr-hora-inicio" value="08:00" required>
+
+            <hr style="margin: 14px 0; border: none; border-top: 1px solid #eee;">
+
+            <label>Nombre del almacén</label>
+            <input type="text" id="nr-nombre-almacen" placeholder="Ej: Almacén Central" required>
+
+            <label>Calle y número</label>
+            <input type="text" id="nr-calle-almacen" required>
+
+            <label>Código postal</label>
+            <input type="text" id="nr-cp-almacen" required>
+
+            <label>Población</label>
+            <input type="text" id="nr-poblacion-almacen" required>
+
+            <div id="nueva-ruta-mensaje"></div>
+
+            <button type="submit" class="btn-primary">Crear ruta</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de previsualización de importación PDF -->
+<div id="modal-importar" class="modal-overlay" style="display:none;">
+    <div class="modal-caja">
+        <div class="modal-header">
+            <h2>Previsualización de importación</h2>
+            <button id="btn-cerrar-modal" class="btn-cerrar-modal">✕</button>
+        </div>
+
+        <p class="modal-info">
+            Revisa y corrige los datos antes de confirmar. Las filas marcadas con ⚠ no tenían un horario
+            reconocible en el PDF y usan el horario por defecto (09:00–20:00). Desmarca la casilla de una
+            fila para excluirla de la importación.
+        </p>
+
+        <div id="modal-tabla-contenedor">
+            <table class="tabla-import">
+                <thead>
+                <tr>
+                    <th></th>
+                    <th>Nombre</th>
+                    <th>Calle</th>
+                    <th>CP</th>
+                    <th>Población</th>
+                    <th>Apertura</th>
+                    <th>Cierre</th>
+                </tr>
+                </thead>
+                <tbody id="modal-tabla-body"></tbody>
+            </table>
+        </div>
+
+        <div id="modal-mensaje"></div>
+
+        <div class="modal-footer">
+            <span id="modal-contador"></span>
+            <div>
+                <button id="btn-cancelar-importacion" class="btn-secundario">Cancelar</button>
+                <button id="btn-confirmar-importacion" class="btn-primary">Confirmar importación</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Leaflet JS -->
@@ -402,11 +695,16 @@
                 <div>
                     <span class="parada-numero">#${parada.numero}</span>
                     <span class="parada-nombre">${parada.nombre}</span>
+                    ${parada.esAlmacen ? '<span class="badge-almacen" title="Punto de carga/descarga">🏭 Almacén</span>' : ''}
                     ${(parada.latitud === 0 && parada.longitud === 0) ? '<span class="sin-geocodificar" title="Sin coordenadas">⚠</span>' : ''}
                 </div>
-                <button class="btn-eliminar-parada" title="Eliminar parada" data-id="${parada.id}">🗑</button>
+                <button class="btn-eliminar-parada" title="${parada.esAlmacen ? 'El almacén no se puede eliminar' : 'Eliminar parada'}" data-id="${parada.id}">🗑</button>
             `;
             item.querySelector('.btn-eliminar-parada').addEventListener('click', () => {
+                if (parada.esAlmacen) {
+                    alert('Esta parada es el almacén de la ruta y no se puede eliminar individualmente. Si quieres cambiarla, elimina la ruta completa y créala de nuevo.');
+                    return;
+                }
                 eliminarParada(parada.id, parada.nombre);
             });
             contenedor.appendChild(item);
@@ -581,24 +879,77 @@
         }
     }
 
-    // ─── Crear nueva ruta ─────────────────────────────────────────────
-    document.getElementById('btn-nueva-ruta').addEventListener('click', async () => {
-        const nombre = prompt('Nombre de la ruta (ej: Chofer 1):');
-        if (!nombre) return;
+    // ─── Crear nueva ruta (con almacén) ──────────────────────────────
+    document.getElementById('btn-nueva-ruta').addEventListener('click', () => {
+        document.getElementById('form-nueva-ruta').reset();
+        document.getElementById('nr-hora-inicio').value = '08:00';
+        document.getElementById('nueva-ruta-mensaje').innerHTML = '';
+        document.getElementById('modal-nueva-ruta').style.display = 'flex';
+    });
 
-        const horaInicio = prompt('Hora de inicio de la ruta (formato HH:MM):', '08:00');
-        if (!horaInicio) return;
+    document.getElementById('btn-cerrar-modal-ruta').addEventListener('click', () => {
+        document.getElementById('modal-nueva-ruta').style.display = 'none';
+    });
+
+    document.getElementById('form-nueva-ruta').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const boton = e.target.querySelector('button[type="submit"]');
+        const mensaje = document.getElementById('nueva-ruta-mensaje');
+
+        const nombreRuta = document.getElementById('nr-nombre-ruta').value;
+        const horaInicio = document.getElementById('nr-hora-inicio').value;
+        const nombreAlmacen = document.getElementById('nr-nombre-almacen').value;
+        const calleAlmacen = document.getElementById('nr-calle-almacen').value;
+        const cpAlmacen = document.getElementById('nr-cp-almacen').value;
+        const poblacionAlmacen = document.getElementById('nr-poblacion-almacen').value;
+
+        boton.disabled = true;
+        boton.textContent = 'Creando ruta...';
+        mensaje.innerHTML = '';
 
         try {
-            const resp = await fetch(`${API_BASE}/rutas`, {
+            // Paso 1: crear la ruta
+            const respRuta = await fetch(`${API_BASE}/rutas`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nombre: nombre, horaInicio: horaInicio + ':00' })
+                body: JSON.stringify({ nombre: nombreRuta, horaInicio: horaInicio + ':00' })
             });
-            if (!resp.ok) throw new Error('No se pudo crear la ruta');
+            if (!respRuta.ok) throw new Error('No se pudo crear la ruta');
+            const rutaCreada = await respRuta.json();
+
+            // Paso 2: crear el almacén como primera parada (se geocodifica automáticamente
+            // en el backend, y al ser numero=1 queda marcada esAlmacen=true)
+            boton.textContent = 'Geocodificando almacén...';
+
+            const respAlmacen = await fetch(`${API_BASE}/rutas/${rutaCreada.id}/paradas`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nombre: nombreAlmacen,
+                    calle: calleAlmacen,
+                    codigoPostal: cpAlmacen,
+                    poblacion: poblacionAlmacen,
+                    horaApertura: '00:00:00',
+                    horaCierre: '23:59:00'
+                })
+            });
+            if (!respAlmacen.ok) throw new Error('La ruta se creó, pero no se pudo añadir el almacén');
+            const almacenCreado = await respAlmacen.json();
+
+            document.getElementById('modal-nueva-ruta').style.display = 'none';
+
+            if (almacenCreado.latitud === 0 && almacenCreado.longitud === 0) {
+                alert('Ruta creada, pero no se encontraron coordenadas para la dirección del almacén. Revísala en la lista de paradas.');
+            }
+
             await cargarRutas();
+
         } catch (err) {
-            alert('Error al crear la ruta: ' + err.message);
+            mensaje.innerHTML = `<span class="error">Error: ${err.message}</span>`;
+        } finally {
+            boton.disabled = false;
+            boton.textContent = 'Crear ruta';
         }
     });
 
@@ -702,6 +1053,162 @@
         } finally {
             boton.disabled = false;
             boton.textContent = '🧭 Optimizar ruta';
+        }
+    });
+
+    // ─── Importación de PDF ──────────────────────────────────────────
+    let filasImportadas = [];
+
+    document.getElementById('btn-importar-pdf').addEventListener('click', () => {
+        if (!rutaActivaId) {
+            alert('Selecciona una ruta primero.');
+            return;
+        }
+        document.getElementById('input-pdf').click();
+    });
+
+    document.getElementById('input-pdf').addEventListener('change', async (e) => {
+        const archivo = e.target.files[0];
+        if (!archivo) return;
+
+        const boton = document.getElementById('btn-importar-pdf');
+        boton.disabled = true;
+        boton.textContent = 'Leyendo PDF...';
+
+        try {
+            const formData = new FormData();
+            formData.append('archivo', archivo);
+
+            const resp = await fetch(`${API_BASE}/rutas/${rutaActivaId}/importar-pdf`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!resp.ok) {
+                const texto = await resp.text();
+                throw new Error(texto || 'No se pudo leer el PDF');
+            }
+
+            filasImportadas = await resp.json();
+            abrirModalImportacion();
+
+        } catch (err) {
+            alert('Error al importar el PDF: ' + err.message);
+        } finally {
+            boton.disabled = false;
+            boton.textContent = '📄 Importar PDF';
+            e.target.value = ''; // permite volver a seleccionar el mismo archivo si hace falta
+        }
+    });
+
+    function abrirModalImportacion() {
+        const tbody = document.getElementById('modal-tabla-body');
+        tbody.innerHTML = '';
+
+        filasImportadas.forEach((fila, index) => {
+            const tr = document.createElement('tr');
+            tr.dataset.index = index;
+
+            tr.innerHTML = `
+                <td><input type="checkbox" class="chk-incluir" checked></td>
+                <td><input type="text" class="in-nombre" value="${escaparHtml(fila.nombre)}"></td>
+                <td><input type="text" class="in-calle" value="${escaparHtml(fila.calle)}"></td>
+                <td><input type="text" class="in-cp" value="${escaparHtml(fila.codigoPostal)}" style="width:70px;"></td>
+                <td><input type="text" class="in-poblacion" value="${escaparHtml(fila.poblacion)}"></td>
+                <td><input type="time" class="in-apertura" value="${fila.horaApertura ? fila.horaApertura.substring(0,5) : ''}"></td>
+                <td>
+                    <input type="time" class="in-cierre" value="${fila.horaCierre ? fila.horaCierre.substring(0,5) : ''}">
+                    ${!fila.horarioDetectado ? '<span class="icono-alerta" title="Horario no detectado en el PDF, se usó un valor por defecto">⚠</span>' : ''}
+                </td>
+            `;
+
+            tr.querySelector('.chk-incluir').addEventListener('change', (e) => {
+                tr.classList.toggle('fila-excluida', !e.target.checked);
+                actualizarContadorModal();
+            });
+
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('modal-mensaje').innerHTML = '';
+        actualizarContadorModal();
+        document.getElementById('modal-importar').style.display = 'flex';
+    }
+
+    function actualizarContadorModal() {
+        const total = document.querySelectorAll('#modal-tabla-body tr').length;
+        const incluidas = document.querySelectorAll('#modal-tabla-body .chk-incluir:checked').length;
+        document.getElementById('modal-contador').textContent = `${incluidas} de ${total} filas seleccionadas`;
+    }
+
+    function escaparHtml(texto) {
+        const div = document.createElement('div');
+        div.textContent = texto || '';
+        return div.innerHTML;
+    }
+
+    function cerrarModalImportacion() {
+        document.getElementById('modal-importar').style.display = 'none';
+        filasImportadas = [];
+    }
+
+    document.getElementById('btn-cerrar-modal').addEventListener('click', cerrarModalImportacion);
+    document.getElementById('btn-cancelar-importacion').addEventListener('click', cerrarModalImportacion);
+
+    document.getElementById('btn-confirmar-importacion').addEventListener('click', async () => {
+        const filas = [];
+
+        document.querySelectorAll('#modal-tabla-body tr').forEach(tr => {
+            if (!tr.querySelector('.chk-incluir').checked) return;
+
+            const apertura = tr.querySelector('.in-apertura').value;
+            const cierre = tr.querySelector('.in-cierre').value;
+
+            filas.push({
+                nombre: tr.querySelector('.in-nombre').value,
+                calle: tr.querySelector('.in-calle').value,
+                codigoPostal: tr.querySelector('.in-cp').value,
+                poblacion: tr.querySelector('.in-poblacion').value,
+                horaApertura: (apertura || '09:00') + ':00',
+                horaCierre: (cierre || '20:00') + ':00',
+                horarioDetectado: true
+            });
+        });
+
+        if (filas.length === 0) {
+            document.getElementById('modal-mensaje').innerHTML =
+                '<span class="error">Selecciona al menos una fila para importar.</span>';
+            return;
+        }
+
+        const boton = document.getElementById('btn-confirmar-importacion');
+        const mensaje = document.getElementById('modal-mensaje');
+
+        boton.disabled = true;
+        boton.textContent = 'Importando y geocodificando...';
+        mensaje.innerHTML = `<span style="color:#e67e22;">Esto puede tardar unos segundos (${filas.length} direcciones a geocodificar, ~1 seg. cada una)...</span>`;
+
+        try {
+            const resp = await fetch(`${API_BASE}/rutas/${rutaActivaId}/confirmar-importacion`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(filas)
+            });
+
+            if (!resp.ok) {
+                const texto = await resp.text();
+                throw new Error(texto || 'No se pudo confirmar la importación');
+            }
+
+            cerrarModalImportacion();
+            await cargarParadasDeRuta(rutaActivaId);
+            await cargarRutas();
+
+        } catch (err) {
+            mensaje.innerHTML = `<span class="error">Error: ${err.message}</span>`;
+        } finally {
+            boton.disabled = false;
+            boton.textContent = 'Confirmar importación';
         }
     });
 
