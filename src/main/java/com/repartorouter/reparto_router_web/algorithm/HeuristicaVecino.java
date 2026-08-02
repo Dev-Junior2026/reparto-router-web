@@ -122,4 +122,55 @@ public class HeuristicaVecino {
 
         return new ResultadoOptimizacion(paradasEnOrden, distanciaTotalKm, horaActual, tiempoTotal);
     }
+
+    /**
+     * Dado un orden fijo de paradas (empezando por el almacén), recalcula
+     * horaLlegadaEstimada, numero, y los totales de la ruta.
+     * No decide el orden — solo "simula" recorrerlo tal cual se le pasa.
+     */
+    public ResultadoOptimizacion recalcularConOrdenFijo(List<Parada> ordenFijo, LocalTime horaInicioJornada) {
+        Parada almacen = ordenFijo.get(0);
+
+        LocalTime horaActual = horaInicioJornada;
+        Parada posicionActual = almacen;
+        double distanciaTotalKm = 0.0;
+
+        almacen.setNumero(1);
+        almacen.setHoraLlegadaEstimada(horaInicioJornada);
+
+        for (int i = 1; i < ordenFijo.size(); i++) {
+            Parada siguiente = ordenFijo.get(i);
+
+            double distancia = distanciaService.calcularDistanciaKm(
+                    posicionActual.getLatitud(), posicionActual.getLongitud(),
+                    siguiente.getLatitud(), siguiente.getLongitud()
+            );
+
+            double tiempoViajeMinutos = (distancia / VELOCIDAD_MEDIA_KMH) * 60;
+            LocalTime horaLlegada = horaActual.plusMinutes((long) tiempoViajeMinutos);
+
+            horaActual = horarioService.calcularHoraLlegadaConEspera(horaLlegada, siguiente);
+            horaActual = horaActual.plusMinutes(siguiente.getTiempoDescargaMin());
+
+            siguiente.setHoraLlegadaEstimada(horaActual);
+            siguiente.setNumero(i + 1);
+
+            distanciaTotalKm += distancia;
+            posicionActual = siguiente;
+        }
+
+        // Vuelta al almacén
+        double distanciaVuelta = distanciaService.calcularDistanciaKm(
+                posicionActual.getLatitud(), posicionActual.getLongitud(),
+                almacen.getLatitud(), almacen.getLongitud()
+        );
+        double tiempoVueltaMinutos = (distanciaVuelta / VELOCIDAD_MEDIA_KMH) * 60;
+        horaActual = horaActual.plusMinutes((long) tiempoVueltaMinutos);
+        distanciaTotalKm += distanciaVuelta;
+
+        Duration tiempoTotal = Duration.between(horaInicioJornada, horaActual);
+
+        return new ResultadoOptimizacion(ordenFijo, distanciaTotalKm, horaActual, tiempoTotal);
+    }
+
 }

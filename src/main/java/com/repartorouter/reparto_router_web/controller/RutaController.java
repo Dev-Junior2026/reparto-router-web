@@ -12,8 +12,14 @@ import com.repartorouter.reparto_router_web.repository.ParadaRepository;
 import com.repartorouter.reparto_router_web.service.GeocodificacionService;
 import com.repartorouter.reparto_router_web.algorithm.HeuristicaVecino;
 import com.repartorouter.reparto_router_web.algorithm.ResultadoOptimizacion;
+import com.repartorouter.reparto_router_web.algorithm.AlgoritmoDosOpt;
+import com.repartorouter.reparto_router_web.service.ImportadorPdfService;
+import com.repartorouter.reparto_router_web.controller.dto.FilaImportadaDTO;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 
 import java.util.List;
+import java.util.ArrayList;
 
 @RestController
 @RequestMapping("/api/rutas")
@@ -23,7 +29,13 @@ public class RutaController {
     private RutaRepository rutaRepository;
 
     @Autowired
+    private ImportadorPdfService importadorPdfService;
+
+    @Autowired
     private HeuristicaVecino heuristicaVecino;
+
+    @Autowired
+    private AlgoritmoDosOpt algoritmoDosOpt;
 
     // GET /api/rutas
     @GetMapping
@@ -48,6 +60,82 @@ public class RutaController {
 
     @Autowired
     private ParadaRepository paradaRepository;
+
+    // POST /api/rutas/{rutaId}/importar-pdf  (extrae filas del PDF, sin guardar)
+    @PostMapping("/{rutaId}/importar-pdf")
+    public ResponseEntity<?> importarPdf(@PathVariable Long rutaId, @RequestParam("archivo") MultipartFile archivo) {
+
+        if (!rutaRepository.existsById(rutaId)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (archivo.isEmpty()) {
+            return ResponseEntity.badRequest().body("El archivo está vacío");
+        }
+
+        try {
+            List<FilaImportadaDTO> filas = importadorPdfService.extraerFilas(archivo.getInputStream());
+
+            if (filas.isEmpty()) {
+                return ResponseEntity.badRequest().body("No se encontraron filas válidas en el PDF");
+            }
+
+            return ResponseEntity.ok(filas);
+
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().body("Error al leer el PDF: " + e.getMessage());
+        }
+    }
+
+    // POST /api/rutas/{rutaId}/confirmar-importacion  (guarda las filas ya editadas por el usuario)
+    @PostMapping("/{rutaId}/confirmar-importacion")
+    public ResponseEntity<?> confirmarImportacion(@PathVariable Long rutaId, @RequestBody List<FilaImportadaDTO> filas) {
+
+        return rutaRepository.findById(rutaId)
+                .map(ruta -> {
+
+                    if (filas.isEmpty()) {
+                        return ResponseEntity.badRequest().body("No hay filas para importar");
+                    }
+
+                    int siguienteNumero = ruta.getParadasOrdenadas().size() + 1;
+                    List<Parada> paradasCreadas = new ArrayList<>();
+
+                    for (FilaImportadaDTO fila : filas) {
+                        Parada parada = new Parada(
+                                siguienteNumero++,
+                                fila.getNombre(),
+                                fila.getCalle(),
+                                fila.getCodigoPostal(),
+                                fila.getPoblacion(),
+                                fila.getHoraApertura(),
+                                fila.getHoraCierre()
+                        );
+
+                        try {
+                            double[] coords = geocodificacionService.geocodificar(parada.getDireccion());
+                            parada.setLatitud(coords[0]);
+                            parada.setLongitud(coords[1]);
+                        } catch (RuntimeException e) {
+                            // Se guarda igualmente con lat/lon en 0.0 si falla la geocodificación
+                        }
+
+                        try {
+                            Thread.sleep(1100);
+                        } catch (InterruptedException ignored) {
+                            Thread.currentThread().interrupt();
+                        }
+
+                        ruta.agregarParada(parada);
+                        paradaRepository.save(parada);
+                        paradasCreadas.add(parada);
+                    }
+
+                    return ResponseEntity.status(HttpStatus.CREATED).body(paradasCreadas);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     // POST /api/rutas/{rutaId}/paradas  (crea una parada y la asocia a la ruta)
     @PostMapping("/{rutaId}/paradas")
     public ResponseEntity<?> agregarParada(@PathVariable Long rutaId, @RequestBody ParadaRequest request) {
@@ -103,7 +191,11 @@ public class RutaController {
                         return ResponseEntity.badRequest().body("Hay paradas sin coordenadas; geocodifícalas antes de optimizar");
                     }
 
-                    ResultadoOptimizacion resultado = heuristicaVecino.calcular(paradas, ruta.getHoraInicio());
+                    //ResultadoOptimizacion resultado = heuristicaVecino.calcular(paradas, ruta.getHoraInicio());
+                    ResultadoOptimizacion resultadoInicial = heuristicaVecino.calcular(paradas, ruta.getHoraInicio());
+                    ResultadoOptimizacion resultado = algoritmoDosOpt.mejorar(resultadoInicial.getParadasEnOrden(), ruta.getHoraInicio());
+
+// El resto del método sigue igual (guardar paradas, actualizar ruta...)
 
                     // Persistir el nuevo orden (numero) de cada parada
                     for (Parada parada : resultado.getParadasEnOrden()) {
