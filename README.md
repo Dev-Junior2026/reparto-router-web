@@ -35,6 +35,15 @@ Ambos proyectos se mantienen completamente independientes: la versión de escrit
 
 ## 📸 Capturas
 
+**Listado de rutas**
+![Tabla de paradas y ruta calculada](docs/images/listadoDeRutas.PNG)
+
+**Visualización de la ruta en el mapa (Leaflet)**
+![Mapa de ruta](docs/images/mapaConRutaOptimizada.PNG)
+
+**Previsualización de importación desde PDF**
+![Previsualización PDF](docs/images/importacionPDF.PNG)
+
 *(Añadir capturas de pantalla en `docs/images/` y enlazarlas aquí: listado de rutas, mapa con ruta optimizada, modal de importación de PDF, etc.)*
 
 ---
