@@ -129,6 +129,49 @@ public class RutaController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // PUT /api/rutas/{rutaId}/paradas/{paradaId}
+    @PutMapping("/{rutaId}/paradas/{paradaId}")
+    public ResponseEntity<?> editarParada(@PathVariable Long rutaId, @PathVariable Long paradaId,
+                                          @RequestBody ParadaRequest request) {
+        return rutaRepository.findById(rutaId)
+                .map(ruta -> {
+                    Parada parada = paradaRepository.findById(paradaId).orElse(null);
+
+                    if (parada == null || !parada.getRuta().getId().equals(rutaId)) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                                .body("La parada no existe o no pertenece a esta ruta");
+                    }
+
+                    boolean direccionCambio = !parada.getCalle().equals(request.getCalle())
+                            || !parada.getCodigoPostal().equals(request.getCodigoPostal())
+                            || !parada.getPoblacion().equals(request.getPoblacion());
+
+                    parada.setNombre(request.getNombre());
+                    parada.setCalle(request.getCalle());
+                    parada.setCodigoPostal(request.getCodigoPostal());
+                    parada.setPoblacion(request.getPoblacion());
+                    parada.setHoraApertura(request.getHoraApertura());
+                    parada.setHoraCierre(request.getHoraCierre());
+
+                    if (direccionCambio) {
+                        try {
+                            double[] coords = geocodificacionService.geocodificar(parada.getDireccion());
+                            parada.setLatitud(coords[0]);
+                            parada.setLongitud(coords[1]);
+                        } catch (RuntimeException e) {
+                            parada.setLatitud(0.0);
+                            parada.setLongitud(0.0);
+                        }
+                    }
+
+                    paradaRepository.save(parada);
+                    recalcularTotalesRuta(ruta);
+
+                    return ResponseEntity.ok(parada);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     // PUT /api/rutas/{id}  (editar horaInicio, horaFinEstimada, etc.)
     @PutMapping("/{id}")
     public ResponseEntity<Ruta> actualizarRuta(@PathVariable Long id, @RequestBody Ruta datosRuta) {
