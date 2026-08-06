@@ -479,6 +479,14 @@
             font-size: 0.9rem;
         }
 
+        .form-modal select {
+            padding: 8px 10px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            background: white;
+        }
+
         .form-modal input:focus {
             outline: none;
             border-color: #1e3a5f;
@@ -524,6 +532,15 @@
 
         .btn-header:hover {
             background: #27ae60;
+        }
+
+        .btn-config {
+            background: #566473;
+            margin-right: 8px;
+        }
+
+        .btn-config:hover {
+            background: #445162;
         }
 
         #panel-parada {
@@ -591,7 +608,10 @@
 
 <header>
     <h1>🚚 Reparto Router</h1>
-    <button id="btn-nueva-ruta" class="btn-header">+ Nueva ruta</button>
+    <div>
+        <button id="btn-config" class="btn-header btn-config">⚙️</button>
+        <button id="btn-nueva-ruta" class="btn-header">+ Nueva ruta</button>
+    </div>
 </header>
 
 <div class="layout">
@@ -637,6 +657,38 @@
     </aside>
 
     <main id="mapa"></main>
+</div>
+
+<!-- Modal de configuración -->
+<div id="modal-config" class="modal-overlay" style="display:none;">
+    <div class="modal-caja modal-caja-pequena">
+        <div class="modal-header">
+            <h2>⚙️ Configuración</h2>
+            <button id="btn-cerrar-modal-config" class="btn-cerrar-modal">✕</button>
+        </div>
+
+        <p class="modal-info">
+            Estos valores se aplican por defecto a las rutas y paradas nuevas que crees a partir de ahora.
+        </p>
+
+        <form id="form-config" class="form-modal">
+            <label>Hora de inicio de jornada sugerida</label>
+            <input type="time" id="cfg-hora-inicio" required>
+
+            <label>Tiempo de descarga por defecto (minutos)</label>
+            <input type="number" id="cfg-tiempo-descarga" min="1" max="120" required>
+
+            <label>Navegador preferido para "Abrir en..."</label>
+            <select id="cfg-navegador">
+                <option value="google">Google Maps</option>
+                <option value="waze">Waze</option>
+            </select>
+
+            <div id="config-mensaje"></div>
+
+            <button type="submit" class="btn-primary">Guardar configuración</button>
+        </form>
+    </div>
 </div>
 
 <!-- Modal de nueva ruta (con almacén) -->
@@ -741,6 +793,7 @@
     let polilineaActual = null;
     let rutaActivaId = null;
     let editandoParadaId = null;
+    let configuracionActual = null;
 
     function limpiarMarcadores() {
         marcadoresActuales.forEach(m => mapa.removeLayer(m));
@@ -878,6 +931,7 @@
                     ${parada.direccion || parada.calle}<br>
                     ${parada.horaApertura || ''} - ${parada.horaCierre || ''}
                     ${parada.horaLlegadaEstimada ? '<br>Llegada estimada: ' + parada.horaLlegadaEstimada : ''}
+                    <br><a href="${urlNavegador(parada.latitud, parada.longitud)}" target="_blank" rel="noopener">📍 Abrir en navegador</a>
                 `);
             marcadoresActuales.push(marker);
             bounds.push([parada.latitud, parada.longitud]);
@@ -1013,7 +1067,9 @@
     // ─── Crear nueva ruta (con almacén) ──────────────────────────────
     document.getElementById('btn-nueva-ruta').addEventListener('click', () => {
         document.getElementById('form-nueva-ruta').reset();
-        document.getElementById('nr-hora-inicio').value = '08:00';
+        document.getElementById('nr-hora-inicio').value = configuracionActual
+            ? configuracionActual.horaInicioJornada.substring(0, 5)
+            : '08:00';
         document.getElementById('nueva-ruta-mensaje').innerHTML = '';
         document.getElementById('modal-nueva-ruta').style.display = 'flex';
     });
@@ -1354,7 +1410,85 @@
         }
     });
 
-    cargarRutas();
+    // ─── Configuración ────────────────────────────────────────────────
+    async function cargarConfiguracion() {
+        try {
+            const resp = await fetch(`${API_BASE}/configuraciones`);
+            if (!resp.ok) return;
+            const lista = await resp.json();
+            configuracionActual = lista.length > 0 ? lista[0] : null;
+        } catch (err) {
+            configuracionActual = null; // la app sigue funcionando con valores por defecto
+        }
+    }
+
+    document.getElementById('btn-config').addEventListener('click', () => {
+        const horaSugerida = configuracionActual ? configuracionActual.horaInicioJornada.substring(0, 5) : '08:00';
+        const tiempoDescarga = configuracionActual ? configuracionActual.tiempoDescargaDefecto : 15;
+        const navegador = configuracionActual ? configuracionActual.navegadorPreferido : 'google';
+
+        document.getElementById('cfg-hora-inicio').value = horaSugerida;
+        document.getElementById('cfg-tiempo-descarga').value = tiempoDescarga;
+        document.getElementById('cfg-navegador').value = navegador;
+        document.getElementById('config-mensaje').innerHTML = '';
+        document.getElementById('modal-config').style.display = 'flex';
+    });
+
+    document.getElementById('btn-cerrar-modal-config').addEventListener('click', () => {
+        document.getElementById('modal-config').style.display = 'none';
+    });
+
+    document.getElementById('form-config').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const boton = e.target.querySelector('button[type="submit"]');
+        const mensaje = document.getElementById('config-mensaje');
+
+        const datos = {
+            horaInicioJornada: document.getElementById('cfg-hora-inicio').value + ':00',
+            tiempoDescargaDefecto: parseInt(document.getElementById('cfg-tiempo-descarga').value, 10),
+            navegadorPreferido: document.getElementById('cfg-navegador').value
+        };
+
+        boton.disabled = true;
+        boton.textContent = 'Guardando...';
+        mensaje.innerHTML = '';
+
+        try {
+            const esNueva = configuracionActual === null;
+            const url = esNueva ? `${API_BASE}/configuraciones` : `${API_BASE}/configuraciones/${configuracionActual.id}`;
+
+            const resp = await fetch(url, {
+                method: esNueva ? 'POST' : 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+
+            if (!resp.ok) throw new Error('No se pudo guardar la configuración');
+
+            configuracionActual = await resp.json();
+            mensaje.innerHTML = '<span class="mensaje-ok">✓ Configuración guardada.</span>';
+
+            setTimeout(() => {
+                document.getElementById('modal-config').style.display = 'none';
+            }, 700);
+
+        } catch (err) {
+            mensaje.innerHTML = `<span class="error">Error: ${err.message}</span>`;
+        } finally {
+            boton.disabled = false;
+            boton.textContent = 'Guardar configuración';
+        }
+    });
+
+    function urlNavegador(lat, lon) {
+        if (configuracionActual && configuracionActual.navegadorPreferido === 'waze') {
+            return `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
+        }
+        return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+    }
+
+    cargarConfiguracion().then(cargarRutas);
 </script>
 
 </body>

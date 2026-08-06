@@ -5,8 +5,10 @@ import com.repartorouter.reparto_router_web.algorithm.HeuristicaVecino;
 import com.repartorouter.reparto_router_web.algorithm.ResultadoOptimizacion;
 import com.repartorouter.reparto_router_web.controller.dto.FilaImportadaDTO;
 import com.repartorouter.reparto_router_web.controller.dto.ParadaRequest;
+import com.repartorouter.reparto_router_web.model.ConfiguracionReparto;
 import com.repartorouter.reparto_router_web.model.Parada;
 import com.repartorouter.reparto_router_web.model.Ruta;
+import com.repartorouter.reparto_router_web.repository.ConfiguracionRepartoRepository;
 import com.repartorouter.reparto_router_web.repository.ParadaRepository;
 import com.repartorouter.reparto_router_web.repository.RutaRepository;
 import com.repartorouter.reparto_router_web.service.GeocodificacionService;
@@ -42,6 +44,9 @@ public class RutaController {
 
     @Autowired
     private ImportadorPdfService importadorPdfService;
+
+    @Autowired
+    private ConfiguracionRepartoRepository configuracionRepartoRepository;
 
     // GET /api/rutas
     @GetMapping
@@ -80,6 +85,7 @@ public class RutaController {
                             request.getHoraApertura(),
                             request.getHoraCierre()
                     );
+                    parada.setTiempoDescargaMin(obtenerTiempoDescargaDefecto());
 
                     try {
                         double[] coords = geocodificacionService.geocodificar(parada.getDireccion());
@@ -125,49 +131,6 @@ public class RutaController {
                     recalcularTotalesRuta(ruta);
 
                     return ResponseEntity.noContent().build();
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    // PUT /api/rutas/{rutaId}/paradas/{paradaId}
-    @PutMapping("/{rutaId}/paradas/{paradaId}")
-    public ResponseEntity<?> editarParada(@PathVariable Long rutaId, @PathVariable Long paradaId,
-                                          @RequestBody ParadaRequest request) {
-        return rutaRepository.findById(rutaId)
-                .map(ruta -> {
-                    Parada parada = paradaRepository.findById(paradaId).orElse(null);
-
-                    if (parada == null || !parada.getRuta().getId().equals(rutaId)) {
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                                .body("La parada no existe o no pertenece a esta ruta");
-                    }
-
-                    boolean direccionCambio = !parada.getCalle().equals(request.getCalle())
-                            || !parada.getCodigoPostal().equals(request.getCodigoPostal())
-                            || !parada.getPoblacion().equals(request.getPoblacion());
-
-                    parada.setNombre(request.getNombre());
-                    parada.setCalle(request.getCalle());
-                    parada.setCodigoPostal(request.getCodigoPostal());
-                    parada.setPoblacion(request.getPoblacion());
-                    parada.setHoraApertura(request.getHoraApertura());
-                    parada.setHoraCierre(request.getHoraCierre());
-
-                    if (direccionCambio) {
-                        try {
-                            double[] coords = geocodificacionService.geocodificar(parada.getDireccion());
-                            parada.setLatitud(coords[0]);
-                            parada.setLongitud(coords[1]);
-                        } catch (RuntimeException e) {
-                            parada.setLatitud(0.0);
-                            parada.setLongitud(0.0);
-                        }
-                    }
-
-                    paradaRepository.save(parada);
-                    recalcularTotalesRuta(ruta);
-
-                    return ResponseEntity.ok(parada);
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -288,6 +251,7 @@ public class RutaController {
                                 fila.getHoraApertura(),
                                 fila.getHoraCierre()
                         );
+                        parada.setTiempoDescargaMin(obtenerTiempoDescargaDefecto());
 
                         try {
                             double[] coords = geocodificacionService.geocodificar(parada.getDireccion());
@@ -313,6 +277,18 @@ public class RutaController {
                     return ResponseEntity.status(HttpStatus.CREATED).body(paradasCreadas);
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Obtiene el tiempo de descarga configurado (asume una única fila de
+     * ConfiguracionReparto, patrón "singleton" simple). Si todavía no existe
+     * ninguna configuración guardada, cae a 15 minutos por defecto.
+     */
+    private int obtenerTiempoDescargaDefecto() {
+        return configuracionRepartoRepository.findAll().stream()
+                .findFirst()
+                .map(ConfiguracionReparto::getTiempoDescargaDefecto)
+                .orElse(15);
     }
 
     /**

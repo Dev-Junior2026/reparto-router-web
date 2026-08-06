@@ -37,14 +37,20 @@ public class ConfiguracionRepartoController {
     }
 
     // POST /api/configuraciones
+    // lugarCargaDescargaId es OPCIONAL: el concepto de almacén único global quedó
+    // superado por el flujo de "Nueva ruta", donde cada Ruta define su propio
+    // almacén como su primera Parada. Este campo se conserva por compatibilidad
+    // pero no es obligatorio para crear una configuración.
     @PostMapping
     public ResponseEntity<?> crear(@RequestBody ConfiguracionRepartoRequest request) {
-        Parada parada = paradaRepository.findById(request.getLugarCargaDescargaId())
-                .orElse(null);
+        Parada parada = null;
 
-        if (parada == null) {
-            return ResponseEntity.badRequest()
-                    .body("No existe una Parada con id " + request.getLugarCargaDescargaId());
+        if (request.getLugarCargaDescargaId() != null) {
+            parada = paradaRepository.findById(request.getLugarCargaDescargaId()).orElse(null);
+            if (parada == null) {
+                return ResponseEntity.badRequest()
+                        .body("No existe una Parada con id " + request.getLugarCargaDescargaId());
+            }
         }
 
         ConfiguracionReparto config = new ConfiguracionReparto(parada, request.getHoraInicioJornada());
