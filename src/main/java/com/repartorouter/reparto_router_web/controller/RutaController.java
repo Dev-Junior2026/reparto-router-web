@@ -113,6 +113,49 @@ public class RutaController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // PUT /api/rutas/{rutaId}/paradas/{paradaId}  (edita una parada existente y la re-geocodifica si cambió la dirección)
+    @PutMapping("/{rutaId}/paradas/{paradaId}")
+    public ResponseEntity<?> actualizarParada(@PathVariable Long rutaId,
+                                              @PathVariable Long paradaId,
+                                              @RequestBody ParadaRequest request) {
+        return rutaRepository.findById(rutaId)
+                .map(ruta -> {
+                    Parada parada = paradaRepository.findById(paradaId).orElse(null);
+
+                    if (parada == null || !parada.getRuta().getId().equals(rutaId)) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                                .body("La parada no existe o no pertenece a esta ruta");
+                    }
+
+                    String direccionAnterior = parada.getDireccion();
+
+                    parada.setNombre(request.getNombre());
+                    parada.setCalle(request.getCalle());
+                    parada.setCodigoPostal(request.getCodigoPostal());
+                    parada.setPoblacion(request.getPoblacion());
+                    parada.setHoraApertura(request.getHoraApertura());
+                    parada.setHoraCierre(request.getHoraCierre());
+
+                    // Solo re-geocodifica si la dirección ha cambiado (evita llamadas innecesarias a Nominatim)
+                    if (!parada.getDireccion().equals(direccionAnterior)) {
+                        try {
+                            double[] coords = geocodificacionService.geocodificar(parada.getDireccion());
+                            parada.setLatitud(coords[0]);
+                            parada.setLongitud(coords[1]);
+                        } catch (RuntimeException e) {
+                            // Se guarda igualmente con las coordenadas anteriores si falla la geocodificación
+                        }
+                    }
+
+                    Parada actualizada = paradaRepository.save(parada);
+
+                    recalcularTotalesRuta(ruta);
+
+                    return ResponseEntity.ok(actualizada);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     // DELETE /api/rutas/{rutaId}/paradas/{paradaId}
     @DeleteMapping("/{rutaId}/paradas/{paradaId}")
     public ResponseEntity<?> eliminarParada(@PathVariable Long rutaId, @PathVariable Long paradaId) {
