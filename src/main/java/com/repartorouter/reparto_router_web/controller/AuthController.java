@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import com.repartorouter.reparto_router_web.service.JwtService;
+import com.repartorouter.reparto_router_web.controller.dto.LoginResponse;
 
 @RestController
 @RequestMapping("/auth")
@@ -16,6 +18,9 @@ public class AuthController {
 
     @Autowired
     private ChoferRepository choferRepository;
+
+    @Autowired
+    private JwtService jwtService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -37,7 +42,10 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         return choferRepository.findByEmail(request.getEmail())
                 .filter(chofer -> passwordEncoder.matches(request.getPassword(), chofer.getPasswordHash()))
-                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .<ResponseEntity<?>>map(chofer -> {
+                    String token = jwtService.generarToken(chofer.getId(), chofer.getEmail());
+                    return ResponseEntity.ok(new LoginResponse(token, chofer.getId(), chofer.getNombre(), chofer.getEmail()));
+                })
                 .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Email o contraseña incorrectos"));
     }
 }
