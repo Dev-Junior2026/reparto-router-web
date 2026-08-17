@@ -18,6 +18,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.repartorouter.reparto_router_web.model.Chofer;
+import com.repartorouter.reparto_router_web.repository.ChoferRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,6 +32,9 @@ public class RutaController {
 
     @Autowired
     private RutaRepository rutaRepository;
+
+    @Autowired
+    private ChoferRepository choferRepository;
 
     @Autowired
     private ParadaRepository paradaRepository;
@@ -60,6 +66,18 @@ public class RutaController {
         return rutaRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    // GET /api/mis-rutas  (solo para la app del chofer autenticado)
+    @GetMapping("/mis-rutas")
+    public List<Ruta> misRutas() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Chofer chofer = choferRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Chofer no encontrado"));
+
+        return rutaRepository.findAll().stream()
+                .filter(ruta -> ruta.getChofer() != null && ruta.getChofer().getId().equals(chofer.getId()))
+                .toList();
     }
 
     // POST /api/rutas  (crea ruta vacía, sin paradas)

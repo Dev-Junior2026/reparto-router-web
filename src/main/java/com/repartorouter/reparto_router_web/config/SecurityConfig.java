@@ -26,12 +26,9 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                /*.authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
-                        .anyRequest().authenticated()
-                )*/
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/api/rutas/mis-rutas").authenticated()
                         .requestMatchers("/api/rutas/**").permitAll()
                         .requestMatchers("/", "/index.html", "/*.js", "/*.css", "/static/**", "/favicon.ico").permitAll()
                         .anyRequest().authenticated()

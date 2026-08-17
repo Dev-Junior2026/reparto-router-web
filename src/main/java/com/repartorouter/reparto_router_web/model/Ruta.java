@@ -30,6 +30,10 @@ public class Ruta {
 
     private String nombre;
 
+    @ManyToOne
+    @JoinColumn(name = "chofer_id")
+    private Chofer chofer;
+
     /**
      * Constructor vacío requerido por JPA/Hibernate.
      */
@@ -100,5 +104,13 @@ public class Ruta {
 
     public void setTiempoTotalEstimado(Duration tiempoTotalEstimado) {
         this.tiempoTotalEstimado = tiempoTotalEstimado;
+    }
+
+    public Chofer getChofer() {
+        return chofer;
+    }
+
+    public void setChofer(Chofer chofer) {
+        this.chofer = chofer;
     }
 }
