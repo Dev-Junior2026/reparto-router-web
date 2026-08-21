@@ -218,6 +218,30 @@ public class RutaController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // DELETE /api/rutas/{rutaId}/paradas  (vacía todas las paradas de la ruta, EXCEPTO el almacén, para poder reutilizar la ruta al día siguiente)
+    @DeleteMapping("/{rutaId}/paradas")
+    public ResponseEntity<?> vaciarParadas(@PathVariable Long rutaId) {
+        return rutaRepository.findById(rutaId)
+                .map(ruta -> {
+                    List<Parada> paradasABorrar = ruta.getParadasOrdenadas().stream()
+                            .filter(parada -> !parada.isEsAlmacen())
+                            .toList();
+
+                    if (paradasABorrar.isEmpty()) {
+                        return ResponseEntity.ok(Map.of("eliminadas", 0));
+                    }
+
+                    ruta.getParadasOrdenadas().removeAll(paradasABorrar);
+                    paradaRepository.deleteAll(paradasABorrar);
+
+                    recalcularTotalesRuta(ruta);
+                    rutaRepository.save(ruta);
+
+                    return ResponseEntity.ok(Map.of("eliminadas", paradasABorrar.size()));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     // PUT /api/rutas/{id}  (editar horaInicio, horaFinEstimada, etc.)
     @PutMapping("/{id}")
     public ResponseEntity<Ruta> actualizarRuta(@PathVariable Long id, @RequestBody Ruta datosRuta) {
