@@ -25,6 +25,7 @@ public class Parada {
     private int tiempoDescargaMin;
     private boolean esAlmacen;
     private LocalTime horaLlegadaEstimada;
+    private boolean completada = false;
 
     @ManyToOne
     @JoinColumn(name = "ruta_id")
@@ -127,4 +128,7 @@ public class Parada {
     public void setHoraLlegadaEstimada(LocalTime horaLlegadaEstimada) {
         this.horaLlegadaEstimada = horaLlegadaEstimada;
     }
+
+    public boolean isCompletada() { return completada; }
+    public void setCompletada(boolean completada) { this.completada = completada; }
 }

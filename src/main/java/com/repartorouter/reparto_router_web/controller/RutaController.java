@@ -5,6 +5,7 @@ import com.repartorouter.reparto_router_web.algorithm.HeuristicaVecino;
 import com.repartorouter.reparto_router_web.algorithm.ResultadoOptimizacion;
 import com.repartorouter.reparto_router_web.controller.dto.FilaImportadaDTO;
 import com.repartorouter.reparto_router_web.controller.dto.ParadaRequest;
+import com.repartorouter.reparto_router_web.controller.dto.EstadoParadaRequest;
 import com.repartorouter.reparto_router_web.model.ConfiguracionReparto;
 import com.repartorouter.reparto_router_web.model.Parada;
 import com.repartorouter.reparto_router_web.model.Ruta;
@@ -238,6 +239,26 @@ public class RutaController {
                     rutaRepository.save(ruta);
 
                     return ResponseEntity.ok(Map.of("eliminadas", paradasABorrar.size()));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // PUT /api/rutas/{rutaId}/paradas/{paradaId}/estado  (marcar/desmarcar una parada como completada, usado por la app driver)
+    @PutMapping("/{rutaId}/paradas/{paradaId}/estado")
+    public ResponseEntity<?> actualizarEstadoParada(
+            @PathVariable Long rutaId,
+            @PathVariable Long paradaId,
+            @RequestBody EstadoParadaRequest request) {
+
+        return paradaRepository.findById(paradaId)
+                .map(parada -> {
+                    if (parada.getRuta() == null || !parada.getRuta().getId().equals(rutaId)) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                                .body(Map.of("error", "La parada no pertenece a esta ruta"));
+                    }
+                    parada.setCompletada(request.isCompletada());
+                    Parada actualizada = paradaRepository.save(parada);
+                    return ResponseEntity.ok(actualizada);
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
