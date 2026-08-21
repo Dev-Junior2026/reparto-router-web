@@ -25,11 +25,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import com.repartorouter.reparto_router_web.service.NotificacionService;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/rutas")
 public class RutaController {
 
+    @Autowired
+    private NotificacionService notificacionService;
     @Autowired
     private RutaRepository rutaRepository;
 
@@ -66,6 +70,23 @@ public class RutaController {
         return rutaRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{id}/notificar")
+    public ResponseEntity<?> notificarChofer(@PathVariable Long id) {
+        Ruta ruta = rutaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Ruta no encontrada"));
+
+        Chofer chofer = ruta.getChofer();
+        if (chofer == null) {
+            return ResponseEntity.badRequest().body("Esta ruta no tiene chofer asignado");
+        }
+        if (chofer.getTokenFcm() == null || chofer.getTokenFcm().isBlank()) {
+            return ResponseEntity.badRequest().body("El chofer no tiene token FCM registrado");
+        }
+
+        String messageId = notificacionService.enviarNotificacionRuta(chofer.getTokenFcm(), ruta);
+        return ResponseEntity.ok(Map.of("messageId", messageId, "estado", "enviado"));
     }
 
     // GET /api/mis-rutas  (solo para la app del chofer autenticado)
@@ -122,6 +143,7 @@ public class RutaController {
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
+
 
     // GET /api/rutas/{rutaId}/paradas  (lista las paradas de esa ruta, ya ordenadas)
     @GetMapping("/{rutaId}/paradas")

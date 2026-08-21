@@ -1,4 +1,4 @@
-package com.luispacheco.repartorouter.config;
+package com.repartorouter.reparto_router_web.config;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;

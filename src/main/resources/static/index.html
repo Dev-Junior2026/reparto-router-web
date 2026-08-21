@@ -115,6 +115,39 @@
             background: #fdecea;
         }
 
+        .ruta-item-acciones {
+            display: flex;
+            align-items: flex-start;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+
+        .btn-enviar-ruta {
+            background: none;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            opacity: 0.5;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: opacity 0.15s ease, background 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-enviar-ruta:hover {
+            opacity: 1;
+            background: #eaf2ff;
+        }
+
+        .btn-enviar-ruta:disabled {
+            opacity: 0.3;
+            cursor: default;
+        }
+
+        .btn-enviar-ruta.enviado {
+            opacity: 1;
+        }
+
         #paradas-lista {
             display: flex;
             flex-direction: column;
@@ -1034,13 +1067,21 @@
                             <div class="ruta-hora">${ruta.nombre || ('Ruta #' + ruta.id)}</div>
                             <div class="ruta-meta">${ruta.horaInicio || 'sin hora'} · ${ruta.paradasOrdenadas ? ruta.paradasOrdenadas.length : 0} parada(s) · ${ruta.distanciaTotalKm} km</div>
                         </div>
-                        <button class="btn-eliminar-ruta" title="Eliminar ruta" data-id="${ruta.id}">🗑</button>
+                        <div class="ruta-item-acciones">
+                            <button class="btn-enviar-ruta" title="Enviar notificación al chofer" data-id="${ruta.id}">📤</button>
+                            <button class="btn-eliminar-ruta" title="Eliminar ruta" data-id="${ruta.id}">🗑</button>
+                        </div>
                     </div>
                 `;
 
                 item.querySelector('.btn-eliminar-ruta').addEventListener('click', (e) => {
                     e.stopPropagation(); // evita que también se seleccione la ruta al pulsar el botón
                     eliminarRuta(ruta.id, ruta.nombre || ('Ruta #' + ruta.id));
+                });
+
+                item.querySelector('.btn-enviar-ruta').addEventListener('click', (e) => {
+                    e.stopPropagation(); // evita que también se seleccione la ruta al pulsar el botón
+                    enviarNotificacionRuta(ruta.id, e.currentTarget);
                 });
                 item.addEventListener('click', () => {
                     marcarRutaActiva(item, ruta.id);
@@ -1061,6 +1102,40 @@
 
         } catch (err) {
             estado.innerHTML = `<span class="error">Error al cargar rutas: ${err.message}. ¿Está el servidor corriendo en localhost:8080?</span>`;
+        }
+    }
+
+    async function enviarNotificacionRuta(rutaId, boton) {
+        const textoOriginal = boton.textContent;
+        boton.disabled = true;
+        boton.textContent = '⏳';
+        boton.classList.remove('enviado');
+
+        try {
+            const resp = await fetch(`${API_BASE}/rutas/${rutaId}/notificar`, {
+                method: 'POST'
+            });
+
+            const data = await resp.json().catch(() => null);
+
+            if (!resp.ok) {
+                const mensaje = (data && data.error) || (typeof data === 'string' ? data : null)
+                    || await resp.text().catch(() => 'No se pudo enviar la notificación');
+                throw new Error(mensaje);
+            }
+
+            boton.textContent = '✅';
+            boton.classList.add('enviado');
+            setTimeout(() => {
+                boton.textContent = textoOriginal;
+                boton.classList.remove('enviado');
+                boton.disabled = false;
+            }, 2000);
+
+        } catch (err) {
+            alert('Error al enviar la notificación: ' + err.message);
+            boton.textContent = textoOriginal;
+            boton.disabled = false;
         }
     }
 
